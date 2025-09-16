@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
 use Illuminate\Http\Request;
+use Nette\Utils\Strings;
 
 class EventController extends Controller
 {
@@ -14,13 +15,39 @@ class EventController extends Controller
      */
     public function index()
     {
+        $query = Event::query();
+        $relations = ['user', 'attendees', 'attendees.user'];
+
+        foreach ($relations as $relation ) {
+            $query->when(
+                $this->shouldIncludeRelation($relation),
+                fn($q)=> $q->with($relation)
+            );
+        }
+
         // cause i use EventResource format is data[{}],
         // Event:all() return [{}]
 
         // now we got event with user cause of userResource
-        return EventResource::collection(Event::with('user')->get());
+        return EventResource::collection($query->paginate());
 
         // return EventResource::collection(Event::all());
+    }
+
+    protected function shouldIncludeRelation(String $relation):bool{
+        $include = request()->query('include');
+
+        if(!$include){
+            return false;
+        }
+
+        // explode() convert string to parametre
+       $relations = array_map('trim', explode(',', $include));
+        // So trim is basically a built in PHP function that will remove all the starting leading spaces and all
+        // the ending spaces from any string.
+        // So basically Array.map will run trim for every array element returned by explode.
+
+        return in_array($relation, $relations);
     }
 
     /**

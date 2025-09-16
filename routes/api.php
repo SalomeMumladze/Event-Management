@@ -12,7 +12,8 @@ Route::get('/user', function (Request $request) {
 
 Route::apiResource('events', EventController::class);
 Route::apiResource('events.attendees', AttendeeController::class)
-    ->scoped(['attendee'=> 'event']);
+    ->scoped()->except(['update']); 
+    // we dont wnat update method
 // scope means that this attendee and resources are always part of an event.
 // And basically this means that if you would use route model binding to get an attendee, Laravel will
 // automatically load it by looking only for the attendees of a parent event.
