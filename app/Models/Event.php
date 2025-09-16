@@ -22,4 +22,4 @@ class Event extends Model
     {
         return $this->hasMany(Attendee::class);
     }
-}
+}  

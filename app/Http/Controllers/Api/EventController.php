@@ -4,50 +4,30 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\EventResource;
+use App\Http\Traits\CanLoadRelationships;
 use App\Models\Event;
 use Illuminate\Http\Request;
-use Nette\Utils\Strings;
 
 class EventController extends Controller
 {
+    use CanLoadRelationships;
+
+    private array $relations = ['user', 'attendees', 'attendees.user'];
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $query = Event::query();
-        $relations = ['user', 'attendees', 'attendees.user'];
-
-        foreach ($relations as $relation ) {
-            $query->when(
-                $this->shouldIncludeRelation($relation),
-                fn($q)=> $q->with($relation)
-            );
-        }
-
+        $query = $this->loadRelationships(Event::query());
         // cause i use EventResource format is data[{}],
         // Event:all() return [{}]
 
         // now we got event with user cause of userResource
-        return EventResource::collection($query->paginate());
-
-        // return EventResource::collection(Event::all());
-    }
-
-    protected function shouldIncludeRelation(String $relation):bool{
-        $include = request()->query('include');
-
-        if(!$include){
-            return false;
-        }
-
-        // explode() convert string to parametre
-       $relations = array_map('trim', explode(',', $include));
-        // So trim is basically a built in PHP function that will remove all the starting leading spaces and all
-        // the ending spaces from any string.
-        // So basically Array.map will run trim for every array element returned by explode.
-
-        return in_array($relation, $relations);
+        return EventResource::collection(
+            $query->latest()->paginate()
+        );
+          // return EventResource::collection(Event::all());
     }
 
     /**
@@ -65,7 +45,7 @@ class EventController extends Controller
             'user_id' => 1
         ]);
 
-        return new EventResource($event);
+        return new EventResource($this->loadRelationships($event));
     }
 
     /**
@@ -73,8 +53,7 @@ class EventController extends Controller
      */
     public function show(Event $event)
     {
-        $event->load('user', 'attendees');
-        return new EventResource($event);
+        return new EventResource($this->loadRelationships($event));
     }
 
     /**
@@ -82,7 +61,7 @@ class EventController extends Controller
      */
     public function update(Request $request, Event $event)
     {
-        $event -> update(
+        $event->update(
             $request->validate([
                 'name' => 'sometimes|string|max:255',
                 'description' => 'nullable|string',
@@ -91,8 +70,7 @@ class EventController extends Controller
             ])
         );
 
-        return new EventResource($event);
-
+        return new EventResource($this->loadRelationships($event));
     }
 
     /**
